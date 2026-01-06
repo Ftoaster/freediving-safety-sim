@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Freediving Safety Simulator</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="다이버와 세이프티 버디의 미팅 타이밍을 시뮬레이션합니다">
+    <meta name="theme-color" content="#06b6d4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Safety Sim">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect fill='%230a0e17' width='512' height='512' rx='64'/%3E%3Ccircle cx='200' cy='280' r='50' fill='%233b82f6'/%3E%3Ccircle cx='312' cy='200' r='50' fill='%23f97316'/%3E%3C/svg%3E">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-orange: #f97316;
+            --accent-green: #22c55e;
+            --accent-purple: #a855f7;
+            --accent-red: #ef4444;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #2d3748;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .screen { display: none !important; min-height: 100vh; }
+        #setupScreen.active { display: flex !important; }
+        #simScreen.active { display: flex !important; }
+
+        /* ===== SETUP SCREEN ===== */
+        #setupScreen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #0c4a6e 0%, #0a0e17 50%);
+        }
+
+        .setup-container { max-width: 420px; width: 100%; }
+
+        .setup-header { text-align: center; margin-bottom: 30px; }
+
+        .setup-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .setup-header p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        .setup-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin: 20px 0 12px 0;
+            padding-left: 2px;
+        }
+
+        .section-title:first-child { margin-top: 0; }
+
+        .input-group { margin-bottom: 14px; }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .btn-start-sim {
+            width: 100%;
+            padding: 16px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-start-sim:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(6, 182, 212, 0.4);
+        }
+
+        /* ===== SIMULATION SCREEN ===== */
+        #simScreen {
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--bg-primary);
+        }
+
+        .sim-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .sim-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+
+        .btn-back {
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-back:hover { background: var(--border); color: var(--text-primary); }
+
+        .sim-canvas-container {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            background: linear-gradient(180deg, #0c4a6e 0%, #164e63 30%, #0f172a 100%);
+        }
+
+        #mainCanvas { width: 100%; height: 100%; }
+
+        .status-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 12px 18px;
+            border-radius: 16px;
+            text-align: left;
+        }
+
+        .status-time { 
+            font-size: 1.2rem; 
+            font-weight: 700;
+            color: var(--text-muted); 
+            font-variant-numeric: tabular-nums;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        }
+        .status-time span { font-size: 1.2rem; font-weight: 700; color: var(--text-muted); }
+        .status-message { font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px; }
+
+        .depth-overlay {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .depth-card {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .depth-card.diver { border-top: 3px solid var(--accent-blue); }
+        .depth-card.safety { border-top: 3px solid var(--accent-orange); }
+        .depth-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .depth-value { font-size: 1.5rem; font-weight: 700; }
+        .depth-card.diver .depth-value { color: var(--accent-blue); }
+        .depth-card.safety .depth-value { color: var(--accent-orange); }
+
+        .timeline-panel {
+            background: var(--bg-card);
+            padding: 15px 20px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .timeline-bar { position: relative; height: 50px; margin-bottom: 15px; }
+        #timelineCanvas { width: 100%; height: 100%; }
+
+        .control-buttons { display: flex; gap: 10px; }
+
+        .ctrl-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .ctrl-btn.primary { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: white; }
+        .ctrl-btn.warning { background: linear-gradient(135deg, var(--accent-orange), #ea580c); color: white; }
+        .ctrl-btn.secondary { background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
+        .ctrl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .jump-buttons { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+        .jump-btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 10px 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .jump-btn:hover { background: var(--border); color: var(--text-primary); }
+        .jump-btn.start { border-top: 2px solid var(--accent-blue); }
+        .jump-btn.turn { border-top: 2px solid var(--accent-purple); }
+        .jump-btn.safety { border-top: 2px solid var(--accent-orange); }
+        .jump-btn.meet { border-top: 2px solid var(--accent-green); }
+        .jump-btn.end { border-top: 2px solid var(--accent-red); }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .running .status-time { animation: pulse 1.5s ease-in-out infinite; }
+
+        .install-banner {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--accent-cyan);
+            padding: 14px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 1000;
+        }
+        .install-text { color: var(--text-primary); font-size: 0.9rem; }
+        .install-btn { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .close-btn { background: transparent; color: var(--text-muted); border: none; font-size: 1.2rem; cursor: pointer; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <!-- ===== SETUP SCREEN ===== -->
+    <div id="setupScreen" class="screen active">
+        <div class="setup-container">
+            <div class="setup-header">
+                <h1>Safety Simulator</h1>
+                <p>다이버와 세이프티 버디의 미팅 타이밍</p>
+            </div>
+
+            <div class="setup-card">
+                <div class="section-title">수심 설정</div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>목표 수심 (m)</label>
+                        <input type="number" id="targetDepth" value="40" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label>미팅 수심 (m)</label>
+                        <input type="number" id="meetDepth" value="15" min="1">
+                    </div>
+                </div>
+
+                <div class="section-title">속도 설정</div>
+                <div class="input-row">
+                    <div style="text-align: center; font-size: 0.85rem; color: var(--accent-blue); font-weight: 600; margin-bottom: 8px;">다이버</div>
+                    <div style="text-align: center; font-size: 0.85rem; color: var(--accent-orange); font-weight: 600; margin-bottom: 8px;">세이프티</div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>하강 속도 (m/s)</label>
+                        <input type="number" id="diverDescentSpeed" value="1.2" min="0.1" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>하강 속도 (m/s)</label>
+                        <input type="number" id="safetyDescentSpeed" value="1.0" min="0.1" step="0.1">
+                    </div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>상승 속도 (m/s)</label>
+                        <input type="number" id="diverAscentSpeed" value="1.0" min="0.1" step="0.1">
+                    </div>
+                    <div class="input-group" style="display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">다이버와<br>함께 상승</span>
+                    </div>
+                </div>
+
+                <button class="btn-start-sim" id="btnStartSim">시뮬레이션 시작</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SIMULATION SCREEN ===== -->
+    <div id="simScreen" class="screen">
+        <div class="sim-header">
+            <span class="sim-title">Safety Simulator</span>
+            <button class="btn-back" id="btnBack">← 설정으로</button>
+        </div>
+
+        <div class="sim-canvas-container">
+            <canvas id="mainCanvas"></canvas>
+            
+            <div class="status-overlay" id="statusOverlay">
+                <div class="status-time">
+                    <span id="currentTime">0.0</span>s <span>/ <span id="totalTime">0.0</span>s</span>
+                </div>
+                <div class="status-message" id="statusMessage">준비...</div>
+            </div>
+
+            <div class="depth-overlay">
+                <div class="depth-card diver">
+                    <div class="depth-label">Diver</div>
+                    <div class="depth-value" id="diverDepth">0.0m</div>
+                </div>
+                <div class="depth-card safety">
+                    <div class="depth-label">Safety</div>
+                    <div class="depth-value" id="safetyDepth">0.0m</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="timeline-panel">
+            <div class="timeline-bar">
+                <canvas id="timelineCanvas"></canvas>
+            </div>
+
+            <div class="control-buttons">
+                <button class="ctrl-btn warning" id="btnToggle">일시정지</button>
+            </div>
+
+            <div class="jump-buttons">
+                <button class="jump-btn start" onclick="jumpTo(0)">시작</button>
+                <button class="jump-btn turn" onclick="jumpTo('turn')">턴</button>
+                <button class="jump-btn safety" onclick="jumpTo('safety')">세이프티</button>
+                <button class="jump-btn meet" onclick="jumpTo('meet')">미팅</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Install Banner -->
+    <div id="installBanner" class="install-banner" style="display: none;">
+        <span class="install-text">앱으로 설치하세요!</span>
+        <div>
+            <button id="installBtn" class="install-btn">설치</button>
+            <button id="closeBanner" class="close-btn">✕</button>
+        </div>
+    </div>
+
+    <script>
+        // ===== Constants =====
+        const TURN_DURATION = 2; // 턴 소요 시간 (초)
+
+        // ===== State =====
+        const state = {
+            isRunning: false,
+            isPaused: false,
+            currentTime: 0,
+            totalTime: 0,
+            lastUpdateTime: 0,
+            
+            // 설정값
+            targetDepth: 40,
+            meetDepth: 15,
+            diverDescentSpeed: 1.2,
+            diverAscentSpeed: 1.0,
+            safetyDescentSpeed: 1.0,
+            simSpeed: 1.0,
+            
+            // 타임라인 이벤트
+            turnStartTime: 0,      // 턴 시작 (목표 도달)
+            turnEndTime: 0,        // 턴 종료 (상승 시작)
+            safetyStartTime: 0,
+            safetyArrivalTime: 0,  // 세이프티 미팅 수심 도착
+            safetyTurnEndTime: 0,  // 세이프티 턴 종료
+            meetingTime: 0,
+            
+            // 현재 위치
+            diverDepth: 0,
+            safetyDepth: 0
+        };
+
+        // ===== DOM =====
+        const $ = id => document.getElementById(id);
+        const setupScreen = $('setupScreen');
+        const simScreen = $('simScreen');
+        const mainCanvas = $('mainCanvas');
+        const timelineCanvas = $('timelineCanvas');
+        const mainCtx = mainCanvas.getContext('2d');
+        const timelineCtx = timelineCanvas.getContext('2d');
+
+        // ===== Screen Navigation =====
+        function showSimScreen() {
+            if (!validateInputs()) return;
+            calculatePlan();
+            
+            setupScreen.classList.remove('active');
+            simScreen.classList.add('active');
+            
+            setTimeout(() => {
+                resizeCanvases();
+                startSimulation(); // 자동 재생
+            }, 50);
+        }
+
+        function showSetupScreen() {
+            state.isRunning = false;
+            state.isPaused = false;
+            simScreen.classList.remove('active');
+            setupScreen.classList.add('active');
+        }
+
+        // ===== Validation =====
+        function validateInputs() {
+            const target = parseFloat($('targetDepth').value);
+            const meet = parseFloat($('meetDepth').value);
+            const dDesc = parseFloat($('diverDescentSpeed').value);
+            const dAsc = parseFloat($('diverAscentSpeed').value);
+            const sDesc = parseFloat($('safetyDescentSpeed').value);
+
+            if ([target, meet, dDesc, dAsc, sDesc].some(v => isNaN(v) || v <= 0)) {
+                alert('모든 값은 양수여야 합니다.');
+                return false;
+            }
+            if (target <= meet) {
+                alert('목표 수심이 미팅 수심보다 깊어야 합니다.');
+                return false;
+            }
+
+            state.targetDepth = target;
+            state.meetDepth = meet;
+            state.diverDescentSpeed = dDesc;
+            state.diverAscentSpeed = dAsc;
+            state.safetyDescentSpeed = sDesc;
+            return true;
+        }
+
+        // ===== Calculation =====
+        function calculatePlan() {
+            const { targetDepth, meetDepth, diverDescentSpeed, diverAscentSpeed, safetyDescentSpeed } = state;
+            
+            // 다이버 타임라인
+            // 하강 → 턴(2초) → 상승
+            state.turnStartTime = targetDepth / diverDescentSpeed;
+            state.turnEndTime = state.turnStartTime + TURN_DURATION;
+            
+            // 미팅 시점: 턴 후 + 상승해서 미팅 수심까지
+            const ascentToMeet = (targetDepth - meetDepth) / diverAscentSpeed;
+            state.meetingTime = state.turnEndTime + ascentToMeet;
+            
+            // 세이프티 출발 시점: 미팅 시점 - 세이프티 하강 시간 - 세이프티 턴 시간
+            const safetyDescentTime = meetDepth / safetyDescentSpeed;
+            state.safetyStartTime = state.meetingTime - safetyDescentTime - TURN_DURATION;
+            state.safetyArrivalTime = state.safetyStartTime + safetyDescentTime;
+            state.safetyTurnEndTime = state.safetyArrivalTime + TURN_DURATION;
+            
+            // 총 시간: 턴 후 + 수면까지 상승
+            state.totalTime = state.turnEndTime + (targetDepth / diverAscentSpeed);
+            
+            $('totalTime').textContent = state.totalTime.toFixed(1);
+        }
+
+        function calculatePositionsAtTime(t) {
+            const { 
+                targetDepth, meetDepth, 
+                diverDescentSpeed, diverAscentSpeed, 
+                safetyDescentSpeed,
+                turnStartTime, turnEndTime, safetyStartTime 
+            } = state;
+
+            // 다이버 위치
+            let diverDepth;
+            if (t <= turnStartTime) {
+                // 하강 중
+                diverDepth = diverDescentSpeed * t;
+            } else if (t <= turnEndTime) {
+                // 턴 중 (목표 수심에서 대기)
+                diverDepth = targetDepth;
+            } else {
+                // 상승 중
+                const ascentTime = t - turnEndTime;
+                diverDepth = targetDepth - (diverAscentSpeed * ascentTime);
+                diverDepth = Math.max(0, diverDepth);
+            }
+
+            // 세이프티 위치
+            let safetyDepth = 0;
+            const { safetyArrivalTime, safetyTurnEndTime } = state;
+            
+            if (t >= safetyStartTime) {
+                if (t < safetyArrivalTime) {
+                    // 하강 중
+                    safetyDepth = safetyDescentSpeed * (t - safetyStartTime);
+                } else if (t < safetyTurnEndTime) {
+                    // 턴 중 (미팅 수심에서 대기)
+                    safetyDepth = meetDepth;
+                } else {
+                    // 턴 완료, 미팅 수심에서 대기
+                    safetyDepth = meetDepth;
+                    // 다이버가 더 위로 올라가면 따라 상승
+                    if (diverDepth < meetDepth) {
+                        safetyDepth = diverDepth;
+                    }
+                }
+            }
+
+            return { diverDepth, safetyDepth };
+        }
+
+        function getStatusMessage(t) {
+            const { turnStartTime, turnEndTime, safetyStartTime, safetyArrivalTime, safetyTurnEndTime, meetingTime, totalTime } = state;
+            
+            if (t <= 0) return '준비...';
+            if (t < turnStartTime) return '다이버 하강 중...';
+            if (t < turnEndTime) return '다이버 턴 중...';
+            if (t < safetyStartTime) return '다이버 상승 중';
+            if (t < safetyArrivalTime) return '세이프티 하강!';
+            if (t < safetyTurnEndTime) return '세이프티 턴 중...';
+            if (t < meetingTime) return '미팅 대기';
+            if (t < totalTime) return '미팅 성공!';
+            return '완료!';
+        }
+
+        // ===== Canvas =====
+        function resizeCanvases() {
+            const mainRect = mainCanvas.parentElement.getBoundingClientRect();
+            mainCanvas.width = mainRect.width;
+            mainCanvas.height = mainRect.height;
+
+            const tlRect = timelineCanvas.parentElement.getBoundingClientRect();
+            timelineCanvas.width = tlRect.width;
+            timelineCanvas.height = 50;
+
+            drawScene();
+            drawTimeline();
+        }
+
+        function drawScene() {
+            const ctx = mainCtx;
+            const w = mainCanvas.width;
+            const h = mainCanvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const surfaceY = 40;
+            const scale = (h - 100) / (state.targetDepth + 10);
+            const cx = w / 2;
+
+            // Background
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, '#0c4a6e');
+            grad.addColorStop(0.4, '#164e63');
+            grad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            // Surface
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, surfaceY);
+            ctx.lineTo(w, surfaceY);
+            ctx.stroke();
+
+            // Rope
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            ctx.moveTo(cx, surfaceY);
+            ctx.lineTo(cx, surfaceY + (state.targetDepth + 10) * scale);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Target line
+            const targetY = surfaceY + state.targetDepth * scale;
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(cx - 30, targetY);
+            ctx.lineTo(cx + 30, targetY);
+            ctx.stroke();
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 13px Outfit';
+            ctx.fillText(`${state.targetDepth}m`, cx + 40, targetY + 5);
+
+            // Meet line
+            const meetY = surfaceY + state.meetDepth * scale;
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 3]);
+            ctx.beginPath();
+            ctx.moveTo(cx - 25, meetY);
+            ctx.lineTo(cx + 25, meetY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#22c55e';
+            ctx.fillText(`${state.meetDepth}m`, cx + 40, meetY + 5);
+
+            // Depth markers (2~3개만 표시, 정수 간격)
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.font = '11px Outfit';
+            ctx.textAlign = 'right';
+            
+            // 적절한 간격 계산 (2~3개 눈금이 나오도록)
+            const niceIntervals = [5, 10, 15, 20, 25, 30, 40, 50, 100];
+            let interval = 10;
+            for (const ni of niceIntervals) {
+                const count = Math.floor(state.targetDepth / ni);
+                if (count >= 2 && count <= 4) {
+                    interval = ni;
+                    break;
+                }
+            }
+            
+            for (let d = interval; d < state.targetDepth; d += interval) {
+                const y = surfaceY + d * scale;
+                ctx.fillRect(cx - 6, y, 12, 1);
+                ctx.fillText(`${d}m`, cx - 12, y + 4);
+            }
+            ctx.textAlign = 'left';
+
+            // Diver
+            const diverY = surfaceY + state.diverDepth * scale;
+            ctx.beginPath();
+            ctx.arc(cx, diverY, 16, 0, Math.PI * 2);
+            ctx.fillStyle = '#3b82f6';
+            ctx.fill();
+            ctx.strokeStyle = '#1d4ed8';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Safety
+            const safetyY = surfaceY + state.safetyDepth * scale;
+            ctx.beginPath();
+            ctx.arc(cx + 50, safetyY, 16, 0, Math.PI * 2);
+            ctx.fillStyle = '#f97316';
+            ctx.fill();
+            ctx.strokeStyle = '#ea580c';
+            ctx.stroke();
+        }
+
+        function drawTimeline() {
+            const ctx = timelineCtx;
+            const w = timelineCanvas.width;
+            const h = timelineCanvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            if (state.totalTime <= 0) return;
+
+            const pad = 15;
+            const usable = w - pad * 2;
+
+            // Background bar
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.roundRect(pad, 18, usable, 14, 7);
+            ctx.fill();
+
+            // Progress
+            const progress = Math.min(1, state.currentTime / state.totalTime);
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.roundRect(pad, 18, usable * progress, 14, 7);
+            ctx.fill();
+
+            // Markers
+            const markers = [
+                { t: 0, color: '#3b82f6', label: '시작' },
+                { t: state.turnStartTime, color: '#a855f7', label: '턴' },
+                { t: state.safetyStartTime, color: '#f97316', label: '세이프티' },
+                { t: state.meetingTime, color: '#22c55e', label: '미팅' },
+                { t: state.totalTime, color: '#ef4444', label: '종료' }
+            ];
+
+            markers.forEach(m => {
+                const x = pad + usable * (m.t / state.totalTime);
+                ctx.fillStyle = m.color;
+                ctx.beginPath();
+                ctx.arc(x, 25, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '9px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(m.label, x, 46);
+            });
+
+            // Current indicator
+            const curX = pad + usable * progress;
+            ctx.fillStyle = '#06b6d4';
+            ctx.beginPath();
+            ctx.moveTo(curX - 7, 5);
+            ctx.lineTo(curX + 7, 5);
+            ctx.lineTo(curX, 15);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.textAlign = 'left';
+        }
+
+        // ===== Update =====
+        function updateDisplay() {
+            $('currentTime').textContent = state.currentTime.toFixed(1);
+            $('statusMessage').textContent = getStatusMessage(state.currentTime);
+            $('diverDepth').textContent = state.diverDepth.toFixed(1) + 'm';
+            $('safetyDepth').textContent = state.safetyDepth.toFixed(1) + 'm';
+            drawScene();
+            drawTimeline();
+        }
+
+        // ===== Controls =====
+        function startSimulation() {
+            state.currentTime = 0;
+            state.diverDepth = 0;
+            state.safetyDepth = 0;
+            state.isRunning = true;
+            state.isPaused = false;
+            state.lastUpdateTime = performance.now();
+
+            $('btnToggle').textContent = '일시정지';
+            $('btnToggle').classList.remove('primary');
+            $('btnToggle').classList.add('warning');
+            $('statusOverlay').classList.add('running');
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function togglePlayPause() {
+            if (!state.isRunning || state.currentTime >= state.totalTime) {
+                // 시뮬레이션 완료 후 다시 시작
+                startSimulation();
+                return;
+            }
+
+            state.isPaused = !state.isPaused;
+
+            if (state.isPaused) {
+                $('btnToggle').textContent = '재생';
+                $('btnToggle').classList.remove('warning');
+                $('btnToggle').classList.add('primary');
+                $('statusOverlay').classList.remove('running');
+            } else {
+                state.lastUpdateTime = performance.now();
+                $('btnToggle').textContent = '일시정지';
+                $('btnToggle').classList.remove('primary');
+                $('btnToggle').classList.add('warning');
+                $('statusOverlay').classList.add('running');
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function jumpTo(target) {
+            let t;
+            if (target === 'turn') t = state.turnStartTime;
+            else if (target === 'safety') t = state.safetyStartTime;
+            else if (target === 'meet') t = state.meetingTime;
+            else t = parseFloat(target) || 0;
+
+            t = Math.max(0, Math.min(t, state.totalTime));
+            state.currentTime = t;
+            state.lastUpdateTime = performance.now();
+            
+            const pos = calculatePositionsAtTime(t);
+            state.diverDepth = pos.diverDepth;
+            state.safetyDepth = pos.safetyDepth;
+
+            // 재생 중이 아니면 재생 시작
+            if (!state.isRunning || state.isPaused) {
+                state.isRunning = true;
+                state.isPaused = false;
+                $('btnToggle').textContent = '일시정지';
+                $('btnToggle').classList.remove('primary');
+                $('btnToggle').classList.add('warning');
+                $('statusOverlay').classList.add('running');
+                requestAnimationFrame(gameLoop);
+            }
+
+            updateDisplay();
+        }
+
+        // ===== Game Loop =====
+        function gameLoop(timestamp) {
+            if (!state.isRunning || state.isPaused) return;
+
+            const delta = ((timestamp - state.lastUpdateTime) / 1000) * state.simSpeed;
+            state.lastUpdateTime = timestamp;
+            state.currentTime += delta;
+
+            if (state.currentTime >= state.totalTime) {
+                state.currentTime = state.totalTime;
+                state.isRunning = false;
+                $('btnToggle').textContent = '다시';
+                $('btnToggle').classList.remove('warning');
+                $('btnToggle').classList.add('primary');
+                $('statusOverlay').classList.remove('running');
+            }
+
+            const pos = calculatePositionsAtTime(state.currentTime);
+            state.diverDepth = pos.diverDepth;
+            state.safetyDepth = pos.safetyDepth;
+
+            updateDisplay();
+
+            if (state.isRunning && !state.isPaused) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // ===== Event Listeners =====
+        $('btnStartSim').addEventListener('click', showSimScreen);
+        $('btnBack').addEventListener('click', showSetupScreen);
+        $('btnToggle').addEventListener('click', togglePlayPause);
+        window.addEventListener('resize', () => {
+            if (simScreen.classList.contains('active')) resizeCanvases();
+        });
+
+        // 타임라인 클릭으로 이동
+        timelineCanvas.addEventListener('click', (e) => {
+            if (state.totalTime <= 0) return;
+            
+            const rect = timelineCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const pad = 15;
+            const usable = timelineCanvas.width - pad * 2;
+            
+            // 클릭 위치를 시간으로 변환
+            let ratio = (x - pad) / usable;
+            ratio = Math.max(0, Math.min(1, ratio));
+            const t = ratio * state.totalTime;
+            
+            jumpTo(t);
+        });
+        
+        // 타임라인 커서 변경
+        timelineCanvas.style.cursor = 'pointer';
+
+        // ===== PWA =====
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            deferredPrompt = e;
+            $('installBanner').style.display = 'flex';
+        });
+
+        $('installBtn')?.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                $('installBanner').style.display = 'none';
+            }
+        });
+
+        $('closeBanner')?.addEventListener('click', () => {
+            $('installBanner').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

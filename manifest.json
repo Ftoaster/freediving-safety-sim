@@ -1,0 +1,12 @@
+{
+  "name": "Freediving Safety Simulator",
+  "short_name": "Safety Sim",
+  "description": "다이버와 세이프티 버디의 미팅 타이밍을 시뮬레이션합니다",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0a0e17",
+  "theme_color": "#06b6d4",
+  "orientation": "any",
+  "categories": ["sports", "utilities"],
+  "lang": "ko"
+}
