@@ -302,6 +302,37 @@
         .install-text { color: var(--text-primary); font-size: 0.9rem; }
         .install-btn { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
         .close-btn { background: transparent; color: var(--text-muted); border: none; font-size: 1.2rem; cursor: pointer; margin-left: 10px; }
+
+        /* 모바일 반응형 */
+        @media (max-width: 480px) {
+            .status-overlay {
+                top: 8px;
+                left: 8px;
+                padding: 8px 12px;
+                border-radius: 12px;
+            }
+            .status-time, .status-time span {
+                font-size: 0.9rem;
+            }
+            .status-message {
+                font-size: 0.75rem;
+                margin-top: 2px;
+            }
+            .depth-overlay {
+                bottom: 8px;
+                left: 8px;
+                right: 8px;
+            }
+            .depth-card {
+                padding: 8px;
+            }
+            .depth-label {
+                font-size: 0.65rem;
+            }
+            .depth-value {
+                font-size: 1.2rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -736,14 +767,19 @@
                 { t: state.totalTime, color: '#ef4444', label: '종료' }
             ];
 
+            // 모바일에서 폰트 크기 조정
+            const isMobile = window.innerWidth <= 480;
+            const fontSize = isMobile ? 11 : 10;
+            const markerRadius = isMobile ? 6 : 7;
+
             markers.forEach(m => {
                 const x = pad + usable * (m.t / state.totalTime);
                 ctx.fillStyle = m.color;
                 ctx.beginPath();
-                ctx.arc(x, 25, 7, 0, Math.PI * 2);
+                ctx.arc(x, 25, markerRadius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#94a3b8';
-                ctx.font = '9px Outfit';
+                ctx.font = `${fontSize}px Outfit`;
                 ctx.textAlign = 'center';
                 ctx.fillText(m.label, x, 46);
             });
